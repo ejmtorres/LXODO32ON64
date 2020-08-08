@@ -1,0 +1,430 @@
+Compilador XODO
+
+Introdução
+
+	XODO é um compilador freeware, de propósito acadêmico, para uma linguagem do gênero ALGOL
+com sintaxe próxima a da linguagem PORTUGOL.
+
+	Em 1985, ainda como aluno do curso de Tecnólogo em Processamento de Dados pela 
+Universidade Federal do Ceará, ao adentrar em uma livraria que ficava no Campus do Pici, 
+deparei-me com um livro do Professor Setzer, sobre Compiladores, o qual me deixou bastante 
+empolgado. Comprei-o, é claro!
+
+	A partir daí, comecei a estudar por conta própria diversos assuntos relacionados com 
+Compiladores, tais como Teoria de Autômatos, Linguagens Formais, Linguagem C, Linguagem de 
+Montagem, e muito, muito mesmo a respeito de Compiladores.
+
+	Surgiu então um primeiro Compilador, feito em Pascal, para um Apple Plus rodando CP/M. 
+Pense na demora para compilar o programa! A linguagem de saída ainda era uma linguagem abstrata.
+
+	Depois, outra versão já em C, para o IBM-PC rodando o velho MS-DOS. Gerava macros em 
+linguagem de montagem, para uma máquina do tipo pilha. Esta máquina baseava-se na do livro do 
+Professor Kowaltowski.
+
+	Uma outra versão, também em C, gerou código para o 8088. Utilizei as técnicas do famoso 
+"Livro do Dragão" do Aho e Ullman.
+
+	Em 1998, retomei o projeto que estava parado a anos, e resolvi reescrever o compilador 
+totalmente, do início, mas agora na linguagem C++.
+
+	Agora, em 2004, resolvi fazer o compilador usar melhor os registradores de 32 bits. 
+Antes, so foram utilizado os registradores de 16 bits. O tipo inteiro, agora com 32 bits, 
+abrange uma faixa bem maior de valores.
+
+	Esta versão particular foi reescrita na linguagem C para facilitar um futuro porte para 
+outros sistemas operacionais, tais como Linux. A sintaxe foi ligeiramente modificada para 
+parecer um pouco mais com a linguagem C.
+
+	Espero que esse software possa ser usado com dois objetivos principais : primeiro, como 
+uma linguagem de programação para alunos iniciantes em Informática, em cursos que envolvam 
+algoritmos, e, segundo, como um compilador cujos programas-fontes possam ser estudados por 
+alunos em um curso de Construção de Compiladores.
+
+A Linguagem XODO
+
+	Características principais:
+
+	- linguagem do gênero ALGOL (ALGOL-like)
+	- palavras reservadas em português
+	- tipos básicos : inteiro, cadeia (string) e ponteiro
+	- mecanismos de estruturação : vetor (array) multi-dimensional	
+	- procedimentos e funções
+	- parâmetros passados por valor
+	- emulação de parâmetros passados por referência através do uso de ponteiros
+	- modulos compilados separadamente
+
+	Sintaxe:
+
+	Abaixo segue uma descrição da sintaxe da linguagem xodo, utilizando BNF estendida. Os 
+elementos em negrito são todos tokens reconhecidos pelo parser (analisador léxico).  Não 
+confundir com os meta-caracteres utilizados na descrição sintática propriamente dita, tais como 
+(), [], etc.
+
+	Os elementos opcionais estão envoltos por [ e ] no inicio e no fim, respectivamente. Já 
+os caracteres { e } são utilizados para representar zero ou mais repetições dos elementos por 
+eles delimitados. O símbolo | é ulilizado para indicar uma escolha entre opções.
+
+	Os identificadores são representados pelo símbolo em negrito id, sendoNum01, Soma, Total,
+etc, todos exemplos de identificadores válidos, enquanto ni representa qualquer número inteiro, 
+como 123, 54321  ou -13579, etc. O símbolo cad por sua vez, representa uma cadeia de caracteres 
+delimitada tanto no inicio como no fim pelo caractere ", como em "Xodo - O compilador !".
+
+	Finalmente, eis a sintaxe:
+
+	PROGRAMA = [ DEC_DE_TIPOS ]
+                   [ DEC_DE_VAR ]
+		   [ DEC_DE_ROTINAS ]
+		   prog id ; CORPO .
+	PROGRAMA = [ DEC_DE_TIPOS ]
+                   [ DEC_DE_VAR ]
+		   DEC_DE_ROTINAS
+	PROGRAMA = [ DEC_DE_TIPOS ]
+                   DEC_DE_VAR
+
+	DEC_DE_TIPOS = tipo DEC_TIPO { DEC_TIPO }
+	DEC_TIPO     = id = vetor [ LISTA_INT ] de TIPO ;
+	LISTA_INT    = ni { , ni }
+	TIPO         = inteiro | cadeia | ponteiro
+	
+	DEC_DE_VAR = var DEC_VAR { DEC_VAR }
+	DEC_VAR    = [ publico | privado | externo ] 
+		     ( id | TIPO ) : LISTA_ID ;
+	LISTA_ID   = id { , id }
+
+	DEC_DE_ROTINAS = rotina ( DEC_DE_PROC | DEC_DE_FUNC ) 
+				{ DEC_DE_PROC | DEC_DE_FUNC }
+	DEC_DE_PROC    = [ publico | privado ]
+                         proc id ( [ DEC_DE_PAR ] )
+                         [ DEC_DE_TIPO ]
+			 [ DEC_DE_VAR ] 
+			 CORPO ;
+	DEC_DE_PAR     = DEC_PAR { ; DEC_PAR }
+	DEC_PAR        = TIPO : LISTA_ID
+	DEC_DE_FUNC    = [ publico | privado ]
+                         func id ( [ DEC_DE_PAR ] ) : TIPO
+                         [ DEC_DE_TIPO ]
+			 [ DEC_DE_VAR ]
+			 CORPO ;
+	CORPO          = inicio { COMANDOS } fim
+
+	COMANDOS = COMANDO ; { COMANDO ; }
+	COMANDO	 = id <- EXPRESSAO
+	COMANDO	 = id [ LISTA_DE_EXP ] <- EXPRESSAO
+        COMANDO  = valor ( id ) <- EXPRESSAO
+	COMANDO	 = se EXPRESSAO 
+		   entao COMANDOS
+		   senao COMANDOS
+		   fimse
+	COMANDO	 = enquanto EXPRESSAO faca
+		     COMANDOS
+		   fimenq
+	COMANDO	 = repita
+		     COMANDOS
+		   ate EXPRESSAO
+	COMANDO	 = id | id ( LISTA_DE_EXP )
+	COMANDO	 = retornar EXPRESSAO
+
+	LISTA_DE_EXP = EXPRESSAO { , EXPRESSAO }
+	EXPRESSAO    = EXP_SIMPLES [ RELACAO EXP_SIMPLES ]
+	RELACAO	     = ( < | <= | = | <> | >= | > )
+	EXP_SIMPLES  = [ - ] TERMO {  ( + | - ) TERMO }
+	TERMO	     = FATOR { ( + | / ) FATOR }
+	FATOR	     = id | id [ LISTA_DE_EXP ] | ni | 
+		       cad | ender ( id ) | ( EXPRESSAO )
+
+Exemplos
+
+Programa para imprimir uma mensagem. A rotina impcad da biblioteca xbib.lib é utilizada para 
+imprimir a mensagem.
+
+prog Um;
+inicio
+  impcad("Meu primeiro programa em Xodo!\n");
+fim.
+
+Programa para imprimir os 13 primeiros fatoriais. Utiliza a rotina impint para imprimir valor 
+inteiro. Observe o uso do procedimento Fatorial que recebe um valor inteiro e um ponteiro, e 
+devolve o fatorial no segundo argumento.
+
+var
+  inteiro:I;
+  inteiro:FatDeI;
+
+rotina
+  proc Fatorial;
+  par
+    inteiro  : Num;
+    ponteiro : Fat;
+  var
+    inteiro : Aux;
+    inteiro : I;
+  inicio
+    Aux <- 1;
+    I   <- 1;
+    enquanto I <= Num faca
+      Aux <- Aux * I;
+      I   <- I + 1;
+    fimenq;
+    valor(Fat) <- Aux;
+  fim;
+
+prog Dois;
+inicio
+  I <- 0;
+  enquanto I <= 13 faca
+    Fatorial(I, ender(FatDeI));
+    impcad("O Fatorial de ");
+    impint(I);
+    impcad(" = ");
+    impint(FatDeI);
+    impcad("\n");
+    I <- I + 1;
+  fimenq;
+fim.
+
+Programa identico ao anterior mas usando agora um função ao invés de um procedimento. Observe o 
+tipo de retorno depois do caractere ":" (dois pontos). Observe também que a função é recursiva.
+
+var
+  inteiro:I;
+
+rotina
+  func Fatorial:inteiro;
+  par
+    inteiro  : N;
+  inicio
+    se N = 0
+    entao retorne 1;
+    senao retorne N * Fatorial(N - 1);
+    fimse;
+  fim;
+
+prog Tres;
+inicio
+  I <- 0;
+  enquanto I <= 13 faca
+    impcad("O Fatorial de ");
+    impint(I);
+    impcad(" = ");
+    impint(Fatorial(I));
+    impcad("\n");
+    I <- I + 1;
+  fimenq;
+fim.
+
+Programa para inicializar e imprimir uma matriz 4 por 4 de inteiros. Observe que primeiro deve 
+ser fornecido um tipo estruturado via a palavra reservada "vetor". Observe que a matriz "M" é 
+definida como do tipo TMatriz.
+
+tipo
+  TMatriz = vetor[4, 4] de inteiro;
+
+var
+  inteiro : I, J, K;
+  TMatriz : M;
+
+prog Quatro;
+inicio
+  K <- 0;
+  I <- 0;
+  enquanto I < 4 faca
+    J <- 0;
+    enquanto J < 4 faca
+      M[I, J] <- K;
+      K       <- K + 1;
+      J       <- J + 1;
+    fimenq;
+    I <- I + 1;
+  fimenq;
+
+  I <- 0;
+  enquanto I < 4 faca
+    J <- 0;
+    enquanto J < 4 faca
+      impcad("M[");
+      impint(I);
+      impcad(",");
+      impint(J);
+      impcad("] = ");
+      impint(M[I, J]);
+      impcad("    ");
+      J       <- J + 1;
+    fimenq;
+    impcad("\n");
+    I <- I + 1;
+  fimenq;
+
+fim.
+
+Programa idêntico ao anterior mas observe agora que tudo é feito localmente ao procedimento 
+Matriz que é chamado do programa principal.
+
+rotina
+  proc Matriz;
+  tipo
+    TMatriz = vetor[4, 4] de inteiro;
+  var
+    inteiro : I, J, K;
+    TMatriz : M;
+  inicio
+    K <- 0;
+    I <- 0;
+    enquanto I < 4 faca
+      J <- 0;
+      enquanto J < 4 faca
+        M[I, J] <- K;
+        K       <- K + 1;
+        J       <- J + 1;
+      fimenq;
+      I <- I + 1;
+    fimenq;
+
+    I <- 0;
+    enquanto I < 4 faca
+      J <- 0;
+      enquanto J < 4 faca
+        impcad("M[");
+        impint(I);
+        impcad(",");
+        impint(J);
+        impcad("] = ");
+        impint(M[I, J]);
+        impcad("    ");
+        J  <- J + 1;
+      fimenq;
+      impcad("\n");
+      I <- I + 1;
+    fimenq;
+  fim;
+
+prog Cinco;
+inicio
+  Matriz;
+fim.
+
+Programa para ilustrar o uso de outras rotinas da biblioteca xbib.lib. A rotina lerint recebe o 
+endereço da variável a ser lida. Para isso é utilizado o operador ender.
+
+var
+  inteiro : S;
+  inteiro : I;
+  inteiro : N;
+
+prog Seis;
+inicio
+  impcad("Entre com um valor inteiro  ==> ");
+  lerint(ender(N));
+
+  S <- 0;
+  I <- 1;
+  enquanto I <= N faca
+    S <- S + I;
+    I <- I + 1;
+  fimenq;
+
+  impcad("\nA soma dos primeiros ");
+  impint(N);
+  impcad(" termos vale ");
+  impint(S);
+  impcad("\n");  
+fim.
+
+Programa para ilustrar como fazer a passagem de um vetor para um procediento, e como acessar 
+seus elementos idividuais. Observe que a variável P é sempre incrementada de 4 para acessar o 
+outro valor uma vêz que 4 é o tamanho de um inteiro. O operador "valor" é utilizado para obter 
+o valor de um ponteiro. Ponteiros sempre apontam para uma posição de memória específica (um byte,
+não uma word ou dword, ou outra coisa qualquer).
+
+tipo
+  TVetor = vetor[10] de inteiro;
+
+var
+  TVetor : Vetor;
+
+rotina
+  proc Inicializar;
+  par
+    ponteiro : P;
+    inteiro  : N;
+  var
+    inteiro : I, K;
+  inicio
+    K <- 0;
+    I <- 0;
+    enquanto I < N faca
+      valor(P) <- K;
+      K        <- K + 1;
+      P        <- P + 4;
+      I        <- I + 1;
+    fimenq;
+  fim;
+
+  proc Imprimir;
+  par
+    ponteiro : P;
+    inteiro  : N;
+  var
+    inteiro : I;
+  inicio
+    I <- 0;
+    enquanto I < N faca
+      impcad("Vetor[");
+      impint(I);
+      impcad("] = ");
+      impint(valor(P));
+      impcad("    ");
+      P        <- P + 4;
+      I        <- I + 1;
+    fimenq;
+  fim;
+
+prog Sete;
+inicio
+  Inicializar(ender(Vetor), 10);
+  Imprimir(ender(Vetor), 10);
+fim.
+
+Programa para ilustrar como modularizar um programa. O programa principal é Princ, e o modulo é 
+PotenciaDeDois. Observe que a rotina PotDe2 não é definida no programa principal mas sim no 
+módulo. Observe que os comentários são delimitados pelos caracteres # ... qualquer coisa ... #
+
+#################################
+# programa principal - prog.xod #
+#################################
+var
+  inteiro : I;
+
+prog Princ;
+inicio
+  I <- 0;
+  enquanto I < 31 faca
+    impcad("2 elevado a ");
+    impint(I);
+    impcad(" = ");
+    impint(PotDe2(I));
+    I <- I + 1;
+    impcad("\n");
+  fimenq;
+fim.
+
+######################
+# modulo com rotina  #
+# PotDe2 - pot.xod   #
+######################
+rotina
+func PotDe2 : inteiro;
+par
+  inteiro : N;
+inicio
+  se N = 0
+  entao retorne 1;
+  senao retorne 2 * PotDe2(N - 1);
+  fimse;
+fim;
+
+Informações
+
+	Se você estiver interessado em participar desse projeto (se é que podemos considerar 
+algo tão simples assim como um projeto :) ha ha ) é só me contactar via o e-mail abaixo:
+
+	ejmt_ce@hotmail.com
